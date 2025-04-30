@@ -16,6 +16,7 @@
       justify-content: center;
       margin: 0;
       height: 100vh;
+      padding-bottom: 80px;
     }
     .wheel-container {
       position: relative;
@@ -84,13 +85,22 @@ footer {
   left: 0;
 }
 
+/* Reduce footer size on mobile */
+@media (max-width: 600px) {
+  footer {
+    padding: 5px 10px; /* Even smaller padding */
+    font-size: 12px; /* Reduce text size */
+  }
 
-    @media (max-width: 600px) {
-      footer {
-        padding: 15px;
-        margin-top: 20px;
-      }
-    }
+  footer h1 {
+    font-size: 16px; /* Smaller heading */
+  }
+
+  footer p {
+    font-size: 10px; /* Smaller paragraph text */
+  }
+}
+
   </style>
 </head>
 <body>
