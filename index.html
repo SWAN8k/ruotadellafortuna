@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <!-- Meta tag per dispositivi mobili -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruota della Fortuna - Ordine Casuale con Colori</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      height: 100vh;
+    }
+    .wheel-container {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      max-width: 90vw;
+      max-height: 90vw;
+    }
+    .arrow {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-top: 30px solid red;
+      z-index: 2;
+    }
+    canvas {
+      border-radius: 50%;
+      border: 6px solid #333;
+      width: 100%;
+      height: 100%;
+    }
+    .controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+    @media (max-width: 600px) {
+      .wheel-container {
+        width: 300px;
+        height: 300px;
+      }
+      input, button {
+        font-size: 14px;
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wheel-container">
+    <div class="arrow"></div>
+    <canvas id="wheelCanvas" width="400" height="400"></canvas>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="nameInput" placeholder="Inserisci un nome" />
+    <button id="addName">Aggiungi</button>
+    <button id="spin" disabled>Gira</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const addBtn = document.getElementById("addName");
+    const spinBtn = document.getElementById("spin");
+    const nameInput = document.getElementById("nameInput");
+
+    // Array dei nomi inseriti: ogni elemento è un oggetto { name: string, color: string }
+    let names = [];
+    let rotation = 0;
+    let spinning = false;
+
+    // Funzione per generare un colore random – assegnato una sola volta all'inserimento.
+    function getRandomColor() {
+      const hue = Math.floor(Math.random() * 360);
+      return `hsl(${hue}, 80%, 60%)`;
+    }
+
+    // Confronto case‑insensitive: considera “Stefano” uguale a “stefano”, ecc.
+    function isDefault(item) {
+      return item.name.toLowerCase() === "stefano";
+    }
+
+    // Funzione di shuffle (Fisher–Yates) per mescolare gli array.
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Ritorna l'ordine casuale per disegnare la ruota:
+    // mescola i nomi non‑default e, se presenti, mette “Stefano” in fondo.
+    function arrangeWheelOrder() {
+      const nonDefault = names.filter(n => !isDefault(n));
+      const defaultNames = names.filter(n => isDefault(n));
+      shuffle(nonDefault);
+      return nonDefault.concat(defaultNames);
+    }
+
+    // Durante lo spin l'ordine verrà fissato in currentOrder in modo che non cambi
+    let currentOrder = null;
+
+    // Disegna la ruota usando l'ordine fissato (o calcolato al volo, se currentOrder è null)
+    function drawWheel() {
+      const order = currentOrder || arrangeWheelOrder();
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = canvas.width / 2;
+      const sliceAngle = 2 * Math.PI / Math.max(order.length, 1);
+      const textPadding = 90;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(rotation * Math.PI / 180);
+
+      if (order.length === 0) {
+        ctx.fillStyle = "#ddd";
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      order.forEach((item, i) => {
+        const startAngle = i * sliceAngle;
+        const endAngle = startAngle + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+
+        ctx.save();
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 18px Arial";
+        ctx.fillText(item.name, radius - textPadding, 0);
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    // Funzione per girare la ruota.
+    // Il calcolo del finalAngle è fatto in modo che il centro del settore del candidato
+    // (quello scelto randomicamente tra i nomi non‑default, se presenti) si allinei esattamente sotto la freccia.
+    function spinWheel() {
+      if (spinning) return;
+      if (names.length < 2) return; // Sono necessari almeno 2 nomi per girare
+
+      spinning = true;
+      spinBtn.disabled = true;
+
+      // Fissa l'ordine della ruota per questo spin
+      currentOrder = arrangeWheelOrder();
+
+      // Se sono presenti nomi diversi da “Stefano” (default), scegli casualmente tra questi;
+      // altrimenti, scegli il primo (che sarà “Stefano”)
+      const eligible = currentOrder.filter(n => !isDefault(n));
+      let chosenCandidate;
+      if (eligible.length > 0) {
+        chosenCandidate = eligible[Math.floor(Math.random() * eligible.length)];
+      } else {
+        chosenCandidate = currentOrder[0];
+      }
+      const candidateIndex = currentOrder.findIndex(item => item === chosenCandidate);
+
+      // Calcola l'angolo del settore (in gradi)
+      const sliceAngleDeg = 360 / currentOrder.length;
+      // Il centro del settore candidato
+      const candidateCenter = candidateIndex * sliceAngleDeg + sliceAngleDeg / 2;
+      // L'arrow è posizionata in alto: in coordinate canvas ciò equivale a 270° (oppure -90°);
+      // vogliamo che al termine della rotazione:
+      // (finalRotation + candidateCenter) mod 360 = 270.
+      const arrowAngle = 270;
+      let targetRotation = arrowAngle - candidateCenter;
+      if (targetRotation < 0) targetRotation += 360;
+      const spins = 5;
+      const finalAngle = spins * 360 + targetRotation;
+      const startTime = performance.now();
+
+      function animateWheel(time) {
+        const elapsed = time - startTime;
+        const duration = 4000;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        rotation = easeOut * finalAngle;
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animateWheel);
+        } else {
+          spinning = false;
+          spinBtn.disabled = false;
+          const winner = currentOrder[candidateIndex];
+          alert(`🎉 Il nome scelto è: ${winner.name}`);
+          // Rimuove il vincitore dall'array master "names" (ricerca case‑insensitive)
+          const removeIdx = names.findIndex(n => n.name.toLowerCase() === winner.name.toLowerCase());
+          if (removeIdx !== -1) {
+            names.splice(removeIdx, 1);
+          }
+          rotation = 0;
+          currentOrder = null;
+          drawWheel();
+          if (names.length < 2) spinBtn.disabled = true;
+        }
+      }
+      requestAnimationFrame(animateWheel);
+    }
+
+    // Evento per aggiungere un nuovo nome (controllo duplicati case‑insensitive)
+    addBtn.addEventListener("click", () => {
+      const newName = nameInput.value.trim();
+      if (newName && !names.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
+        names.push({ name: newName, color: getRandomColor() });
+        nameInput.value = "";
+        drawWheel();
+        if (names.length >= 2) spinBtn.disabled = false;
+      } else {
+        alert("Nome vuoto o già presente");
+      }
+    });
+
+    spinBtn.addEventListener("click", spinWheel);
+    document.addEventListener("DOMContentLoaded", drawWheel);
+  </script>
+
+</body>
+</html>
