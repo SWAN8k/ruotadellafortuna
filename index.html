@@ -74,6 +74,22 @@
         padding: 8px;
       }
     }
+        footer {
+      width: 100%;
+      padding: 20px;
+      background-color: #222;
+      text-align: center;
+      position: relative;
+      bottom: 0;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 600px) {
+      footer {
+        padding: 15px;
+        margin-top: 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -89,6 +105,14 @@
     <button id="spin" disabled>Spin</button>
   </div>
 
+  <footer>
+    <h1> NEW WHEEL SPINNER 2024!!!</h1>
+    <p>The wheel spinner is used in many ways: classrooms pick students at random, businesses use it for giveaways,
+presentations use it for selecting winners,
+workplaces use it to randomize speakers in meetings,
+and individuals use it to choose tasks when overwhelmed.</p>
+  </footer>
+  
   <script>
     const canvas = document.getElementById("wheelCanvas");
     const ctx = canvas.getContext("2d");
