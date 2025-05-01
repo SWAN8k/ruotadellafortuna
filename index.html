@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fortune Wheel - Random Order with Colors</title>
+  <title>Fortune Wheel - Special Stefano</title>
   <style>
-
+    /* Stili invariati */
     body {
       font-family: "Arial", sans-serif;
       background: linear-gradient(to bottom, black, #333);
@@ -75,32 +75,15 @@
         padding: 8px;
       }
     }
-footer {
-  width: 100%;
-  padding: 20px 40px 20px 30px;
-  background-color: #222;
-  text-align: center;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-}
-
-/* Reduce footer size on mobile */
-@media (max-width: 600px) {
-  footer {
-    padding: 5px 10px; /* Even smaller padding */
-    font-size: 12px; /* Reduce text size */
-  }
-
-  footer h1 {
-    font-size: 16px; /* Smaller heading */
-  }
-
-  footer p {
-    font-size: 10px; /* Smaller paragraph text */
-  }
-}
-
+    footer {
+      width: 100%;
+      padding: 20px 40px 20px 30px;
+      background-color: #222;
+      text-align: center;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+    }
   </style>
 </head>
 <body>
@@ -139,9 +122,28 @@ workplaces use it to randomize speakers in meetings</p>
       return `hsl(${hue}, 80%, 60%)`;
     }
 
-    function isStefano(item) {
-      return item.name.toLowerCase() === "stefano";
-    }
+    // Riconosce tutti i casi di Stefano (singolo o con testo aggiuntivo)
+function isSpecialStefano(item) {
+    if (!item || !item.name) return false;
+    const name = item.name.toLowerCase().trim();
+
+  return (
+    item.isSpecial ||
+    name === "stefano" ||
+    name === "stefano e emanuela" ||
+    name.startsWith("stefano e emanuela") ||
+    name.startsWith("stefano") ||
+    name === "ste" ||
+    name.startsWith("ste e ema") ||
+    name.startsWith("ste ema") ||
+    name === "emanuela" ||
+    name.startsWith("emanuela") ||
+    name === "ema ste" ||
+    name === "emanuela e stefano" ||
+    name === "emanuela stefano" ||
+    name === "ema e ste"
+  );
+  }
 
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
@@ -152,10 +154,12 @@ workplaces use it to randomize speakers in meetings</p>
     }
 
     function arrangeWheelOrder() {
-      const nonStefano = names.filter(n => !isStefano(n));
-      const stefanoNames = names.filter(n => isStefano(n));
-      shuffle(nonStefano);
-      return nonStefano.concat(stefanoNames);
+      const nonSpecial = names.filter(n => !isSpecialStefano(n));
+      const specialNames = names.filter(n => isSpecialStefano(n));
+      shuffle(nonSpecial);
+      
+      // Caso speciale sempre in fondo
+      return [...shuffle(nonSpecial), ...specialNames];
     }
 
     let currentOrder = null;
@@ -192,12 +196,23 @@ workplaces use it to randomize speakers in meetings</p>
         ctx.closePath();
         ctx.fillStyle = item.color;
         ctx.fill();
-
         ctx.save();
         ctx.rotate(startAngle + sliceAngle / 2);
         ctx.textAlign = "center";
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 26px Lobster";
+        
+        // Mostra sempre il nome esatto come inserito
+        let fontSize = 25;
+        ctx.font = `bold ${fontSize}px Arial`;
+        let textWidth = ctx.measureText(item.name).width;
+
+        // Riduzione automatica del font size
+        while (textWidth > (radius - textPadding) && fontSize > 10) {
+          fontSize--;
+          ctx.font = `bold ${fontSize}px Arial`;
+          textWidth = ctx.measureText(item.name).width;
+        }
+
         ctx.fillText(item.name, radius - textPadding, 0);
         ctx.restore();
       });
@@ -205,22 +220,26 @@ workplaces use it to randomize speakers in meetings</p>
       ctx.restore();
     }
 
+
     function spinWheel() {
       if (spinning) return;
-      if (names.length < 2) return;
+      if (names.length < 1) return;
 
       spinning = true;
       spinBtn.disabled = true;
 
       currentOrder = arrangeWheelOrder();
 
-      const eligible = currentOrder.filter(n => !isStefano(n));
+      const eligible = currentOrder.filter(n => !isSpecialStefano(n));
       let chosenCandidate;
+      
       if (eligible.length > 0) {
         chosenCandidate = eligible[Math.floor(Math.random() * eligible.length)];
       } else {
+        // Se solo il caso speciale esiste, permetti la selezione
         chosenCandidate = currentOrder[0];
       }
+
       const candidateIndex = currentOrder.findIndex(item => item === chosenCandidate);
 
       const sliceAngleDeg = 360 / currentOrder.length;
@@ -247,8 +266,13 @@ workplaces use it to randomize speakers in meetings</p>
           spinning = false;
           spinBtn.disabled = false;
           const winner = currentOrder[candidateIndex];
+          
           alert(`🎉 The selected name is: ${winner.name}`);
-          names = names.filter(n => n.name.toLowerCase() !== winner.name.toLowerCase());
+          
+          if (!isSpecialStefano(winner)) {
+            names = names.filter(n => n !== winner);
+          }
+          
           rotation = 0;
           currentOrder = null;
           drawWheel();
@@ -260,19 +284,49 @@ workplaces use it to randomize speakers in meetings</p>
 
     addBtn.addEventListener("click", () => {
       const newName = nameInput.value.trim();
-      if (newName && !names.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
+      if (!newName) {
+        alert("Empty name");
+        return;
+      }
+
+      // Normalizza il nome per riconoscere Stefano
+      const normalizedName = newName.toLowerCase();
+      
+      // Verifica se è un caso speciale Stefano
+      if (normalizedName.startsWith("stefano")) {
+        // Aggiunge un solo caso speciale (se non esiste già)
+        if (!names.some(n => isSpecialStefano(n))) {
+          names.push({ 
+            name: newName, // Mantiene il nome esatto come inserito
+            color: "#FFD700", 
+            isSpecial: true 
+          });
+          nameInput.value = "";
+          drawWheel();
+          if (names.length >= 2) spinBtn.disabled = true;
+        } else {
+          // Se esiste già un caso speciale, sostituisce il nome
+          const existing = names.find(n => isSpecialStefano(n));
+          existing.name = newName;
+          nameInput.value = "";
+          drawWheel();
+        }
+        return;
+      }
+
+      // Aggiunta normale per altri nomi
+      if (!names.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
         names.push({ name: newName, color: getRandomColor() });
         nameInput.value = "";
         drawWheel();
         if (names.length >= 2) spinBtn.disabled = false;
       } else {
-        alert("Empty or duplicate name");
+        alert("Duplicate name");
       }
     });
 
     spinBtn.addEventListener("click", spinWheel);
     document.addEventListener("DOMContentLoaded", drawWheel);
   </script>
-
 </body>
 </html>
