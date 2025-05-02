@@ -84,6 +84,22 @@
       bottom: 0;
       left: 0;
     }
+
+    /* Reduce footer size on mobile */
+    @media (max-width: 600px) {
+      footer {
+        padding: 5px 10px; /* Even smaller padding */
+        font-size: 12px; /* Reduce text size */
+      }
+
+      footer h1 {
+        font-size: 16px; /* Smaller heading */
+      }
+
+      footer p {
+        font-size: 10px; /* Smaller paragraph text */
+      }
+    }
   </style>
 </head>
 <body>
